@@ -1,4 +1,4 @@
-# Snaptic_SM64
+# Snaptic_LevelEditor
 
 This is a mod for the Snaptic Demo made for [GDPatch Modloader](https://gdpatch.dev/)
 
