@@ -1,0 +1,372 @@
+[gd_scene format=3 uid="uid://bi68p2jb783wi"]
+
+[ext_resource type="Script" uid="uid://dfs4dm6nsq314" path="res://gdpatch/mod/snaptic_leveleditor/level_editor.gd" id="1_vk4ci"]
+[ext_resource type="PackedScene" uid="uid://c01qwtrfrr5rk" path="res://actors/player/player.tscn" id="2_sfyqf"]
+[ext_resource type="Shader" uid="uid://db5u83cq55tp1" path="res://shaders/spatial/rig_afterimage.gdshader" id="3_6ahyq"]
+[ext_resource type="Texture2D" uid="uid://rja3r7mpuyu5" path="res://art/textures/basic_shapes/double_triangle.png" id="4_yicr7"]
+[ext_resource type="PackedScene" uid="uid://dd86tlp5qec5e" path="res://framework/components/hitbox_hurtbox/prefabs/instakill_hit_box_area_3d.tscn" id="5_dqxxx"]
+[ext_resource type="PackedScene" uid="uid://c2sqfsx5lg4np" path="res://features/magnet/beveled_cube_csg.tscn" id="6_sfyqf"]
+[ext_resource type="PackedScene" uid="uid://dhrgyhmngt7p3" path="res://gdpatch/mod/snaptic_leveleditor/axis_indicator.tscn" id="7_6ahyq"]
+
+[sub_resource type="Environment" id="Environment_dvb16"]
+background_mode = 1
+background_color = Color(1, 1, 1, 1)
+ambient_light_color = Color(1, 1, 1, 1)
+fog_mode = 1
+fog_light_color = Color(0.5882353, 0.5882353, 1, 1)
+fog_density = 1.0
+
+[sub_resource type="Gradient" id="Gradient_udhcv"]
+offsets = PackedFloat32Array(0, 0.28988764, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 0.40784314, 0.62352943, 1, 1, 0.6627451, 0.36862746, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_6ahyq"]
+resource_local_to_scene = true
+gradient = SubResource("Gradient_udhcv")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_yicr7"]
+resource_local_to_scene = true
+render_priority = 0
+shader = ExtResource("3_6ahyq")
+shader_parameter/color_ramp = SubResource("GradientTexture1D_6ahyq")
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_dqxxx"]
+resource_local_to_scene = true
+gradient = SubResource("Gradient_udhcv")
+
+[sub_resource type="Gradient" id="Gradient_lfsh8"]
+offsets = PackedFloat32Array(0, 0.28988764, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 0.40784314, 0.62352943, 1, 1, 0.6627451, 0.36862746, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_dvb16"]
+resource_local_to_scene = true
+gradient = SubResource("Gradient_lfsh8")
+
+[sub_resource type="Gradient" id="Gradient_jryvu"]
+resource_local_to_scene = true
+offsets = PackedFloat32Array(0, 0.19444445, 0.8333333)
+colors = PackedColorArray(1, 1, 1, 1, 0.41000003, 1, 0.97050005, 1, 0, 0, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_2t3p3"]
+resource_local_to_scene = true
+gradient = SubResource("Gradient_jryvu")
+
+[sub_resource type="Shader" id="Shader_ymdqq"]
+code = "// NOTE: Shader automatically converted from Godot Engine 4.6.3.stable's StandardMaterial3D.
+
+shader_type spatial;
+render_mode depth_draw_opaque, cull_disabled, unshaded;
+
+#include \"res://shaders/inc/dither.gdshaderinc\"
+
+uniform vec4 albedo : source_color;
+uniform sampler2D texture_albedo : source_color, filter_linear_mipmap, repeat_enable;
+//uniform sampler2D dept
+group_uniforms distance_fade;
+uniform float distance_fade_min : hint_range(0.0, 4096.0, 0.01) = 0.0;
+uniform float distance_fade_max : hint_range(0.0, 4096.0, 0.01) = 30.0;
+
+group_uniforms uv;
+uniform vec2 uv_scale = vec2(1.0);
+uniform vec2 uv_offset;
+
+group_uniforms vertex;
+uniform vec3 vertex_offset;
+
+void vertex() {
+	UV = UV * uv_scale.xy + uv_offset.xy;
+	VERTEX += vertex_offset;
+}
+
+void fragment() {
+	
+	vec2 base_uv = UV;
+
+	vec4 albedo_tex = texture(texture_albedo, base_uv);
+
+	// Vertex Color Use as Albedo: Enabled
+	albedo_tex *= COLOR;
+
+	ALBEDO = albedo.rgb * albedo_tex.rgb;
+	//float alpha = ALPHA * albedo.a * albedo_tex.a;
+	float alpha = albedo.a * albedo_tex.a;
+	
+	// Distance Fade: Pixel Alpha
+	alpha *= clamp(smoothstep(distance_fade_min, distance_fade_max, length(VERTEX)), 0.0, 1.0);
+	
+	// Proximity Fade: Enabled
+	//float proximity_depth_tex = textureLod(depth_texture, SCREEN_UV, 0.0).r;
+	//vec4 ndc = OUTPUT_IS_SRGB ? vec4(vec3(SCREEN_UV, proximity_depth_tex) * 2.0 - 1.0, 1.0) : vec4(SCREEN_UV * 2.0 - 1.0, proximity_depth_tex, 1.0);
+	//vec4 proximity_view_pos = INV_PROJECTION_MATRIX * ndc;
+	//proximity_view_pos.xyz /= proximity_view_pos.w;
+	//alpha *= clamp(1.0 - smoothstep(proximity_view_pos.z + proximity_fade_distance, proximity_view_pos.z, VERTEX.z), 0.0, 1.0);
+	
+	// Dither is alpha
+	if (alpha <= get_dither_threshold(SCREEN_UV, VIEWPORT_SIZE)){
+		 discard;
+	}
+	//alpha *= float(get_dither(alpha, SCREEN_UV, VIEWPORT_SIZE));
+	//ALBEDO = vec3(alpha);
+	//ALPHA_SCISSOR_THRESHOLD = 0.0;
+}
+
+
+void light() {
+	float n_dot_l = dot(NORMAL, LIGHT);
+	float dither_threshold = get_dither_threshold(SCREEN_UV, VIEWPORT_SIZE);
+	float dither_cel = step(dither_threshold, max(0.0, n_dot_l));
+	DIFFUSE_LIGHT += dither_cel * ALBEDO * LIGHT_COLOR * ATTENUATION;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_v0ah5"]
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource("Shader_ymdqq")
+shader_parameter/albedo = Color(1, 1, 1, 0)
+shader_parameter/distance_fade_min = 0.0
+shader_parameter/distance_fade_max = 0.0
+shader_parameter/uv_scale = Vector2(5, 1.9)
+shader_parameter/uv_offset = Vector2(0, 0.059)
+shader_parameter/vertex_offset = Vector3(0, 0.82022476, 0)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_m7s32"]
+resource_local_to_scene = true
+material = SubResource("ShaderMaterial_v0ah5")
+top_radius = 0.0
+bottom_radius = 0.0
+height = 1.6404495
+radial_segments = 6
+rings = 5
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ph7yy"]
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource("Shader_ymdqq")
+shader_parameter/albedo = Color(1, 1, 1, 0)
+shader_parameter/texture_albedo = ExtResource("4_yicr7")
+shader_parameter/distance_fade_min = 0.0
+shader_parameter/distance_fade_max = 0.0
+shader_parameter/uv_scale = Vector2(6, 1.9)
+shader_parameter/uv_offset = Vector2(0, 0.059)
+shader_parameter/vertex_offset = Vector3(0, 0.31690148, 0)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_axafa"]
+resource_local_to_scene = true
+material = SubResource("ShaderMaterial_ph7yy")
+top_radius = 2.0
+bottom_radius = 1.0
+height = 0.63380295
+radial_segments = 8
+rings = 5
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_i0btr"]
+load_path = "res://.godot/imported/double_triangle.png-279bf366817107a21f9dff943449a513.s3tc.ctex"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j17oc"]
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource("Shader_ymdqq")
+shader_parameter/albedo = Color(0.7411765, 1, 1, 0)
+shader_parameter/texture_albedo = SubResource("CompressedTexture2D_i0btr")
+shader_parameter/distance_fade_min = 0.0
+shader_parameter/distance_fade_max = 0.0
+shader_parameter/uv_scale = Vector2(6, 1.9)
+shader_parameter/uv_offset = Vector2(0, 0.059)
+shader_parameter/vertex_offset = Vector3(0, 0.31690148, 0)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_tpwom"]
+resource_local_to_scene = true
+material = SubResource("ShaderMaterial_j17oc")
+top_radius = 2.0
+bottom_radius = 1.2
+height = 0.63380295
+radial_segments = 8
+rings = 5
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tywc4"]
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource("Shader_ymdqq")
+shader_parameter/albedo = Color(0, 1, 1, 0)
+shader_parameter/texture_albedo = SubResource("CompressedTexture2D_i0btr")
+shader_parameter/distance_fade_min = 0.0
+shader_parameter/distance_fade_max = 0.0
+shader_parameter/uv_scale = Vector2(6, 1.9)
+shader_parameter/uv_offset = Vector2(0, 0.059)
+shader_parameter/vertex_offset = Vector3(0, 0.31690148, 0)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_26caq"]
+resource_local_to_scene = true
+material = SubResource("ShaderMaterial_tywc4")
+top_radius = 2.0
+bottom_radius = 1.2
+height = 0.63380295
+radial_segments = 8
+rings = 5
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5acn3"]
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource("Shader_ymdqq")
+shader_parameter/albedo = Color(0.4509804, 0.43529412, 1, 0)
+shader_parameter/texture_albedo = SubResource("CompressedTexture2D_i0btr")
+shader_parameter/distance_fade_min = 0.0
+shader_parameter/distance_fade_max = 0.0
+shader_parameter/uv_scale = Vector2(6, 1.9)
+shader_parameter/uv_offset = Vector2(0, 0.059)
+shader_parameter/vertex_offset = Vector3(0, 0.31690148, 0)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_6xt2w"]
+resource_local_to_scene = true
+material = SubResource("ShaderMaterial_5acn3")
+top_radius = 2.0
+bottom_radius = 1.2
+height = 0.63380295
+radial_segments = 8
+rings = 5
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8cyp4"]
+resource_local_to_scene = true
+render_priority = 0
+shader = SubResource("Shader_ymdqq")
+shader_parameter/albedo = Color(1, 1, 1, 0)
+shader_parameter/texture_albedo = ExtResource("4_yicr7")
+shader_parameter/distance_fade_min = 0.0
+shader_parameter/distance_fade_max = 0.0
+shader_parameter/uv_scale = Vector2(6, 1.9)
+shader_parameter/uv_offset = Vector2(0, 0.059)
+shader_parameter/vertex_offset = Vector3(0, 0.31690148, 0)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_qf3lb"]
+resource_local_to_scene = true
+material = SubResource("ShaderMaterial_8cyp4")
+top_radius = 2.0
+bottom_radius = 1.0
+height = 0.63380295
+radial_segments = 8
+rings = 5
+cap_top = false
+cap_bottom = false
+
+[sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_0bejx"]
+
+[node name="LevelEditor" type="Node3D" unique_id=1863132317]
+script = ExtResource("1_vk4ci")
+
+[node name="Highlight" type="Node3D" parent="." unique_id=2042757790]
+
+[node name="CSGBeveledCube" parent="Highlight" unique_id=1337715225 instance=ExtResource("6_sfyqf")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.358067, -24.532856, 0.87286186)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=414077112]
+environment = SubResource("Environment_dvb16")
+
+[node name="Player" parent="." unique_id=390444334 instance=ExtResource("2_sfyqf")]
+visible = false
+
+[node name="BHopWind" parent="Player/Characterbody" parent_id_path=PackedInt32Array(390444334, 1619504768) index="5" unique_id=1678382541]
+emitting = true
+
+[node name="MarbleRigidbody" parent="Player" index="1" unique_id=24054155]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.036665026, 1.7700295, -0.0020591281)
+
+[node name="Head" parent="Player/anon_rig/Anon/Skeleton3D/RagdollBoneSimulator" parent_id_path=PackedInt32Array(390444334, 101815849) index="0" unique_id=1829129306]
+transform = Transform3D(-1.0000006, -1.29396405e-08, -3.387219e-07, 3.6168984e-08, 0.989493, -0.14458084, 3.3703355e-07, -0.14458083, -0.989493, -0.036675774, 1.566577, -0.08658303)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.0717655e-05, -0.00038325778, 2.5034218e-05)
+body_offset = Transform3D(1.0000006, -1.2336514e-09, 1.3804026e-08, 1.23379e-09, 1.0000001, -7.301569e-07, -1.3803714e-08, 7.003546e-07, 1, 1.071766e-05, 0.00038325787, -2.503395e-05)
+
+[node name="Torso" parent="Player/anon_rig/Anon/Skeleton3D/RagdollBoneSimulator" parent_id_path=PackedInt32Array(390444334, 101815849) index="1" unique_id=1023071191]
+transform = Transform3D(-1.0000006, -7.7204305e-09, -8.7081254e-08, -3.4194544e-13, 0.9960933, -0.0883075, 8.742277e-08, -0.0883075, -0.9960933, -0.03667665, 0.8956551, -0.0055091977)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1604272e-05, 0.000106453896, -9.030104e-06)
+body_offset = Transform3D(1.0000006, 1.154632e-13, 4.973799e-14, -8.881784e-16, 1, 0, 0, 0, 1, 1.1604279e-05, -0.000106453896, 9.030104e-06)
+
+[node name="BicepL" parent="Player/anon_rig/Anon/Skeleton3D/RagdollBoneSimulator" parent_id_path=PackedInt32Array(390444334, 101815849) index="2" unique_id=1003328194]
+transform = Transform3D(0.91872287, -0.3665429, 0.14695516, -0.26356646, -0.8462528, -0.46302158, 0.29407832, 0.38665584, -0.87407964, -0.2790836, 1.4230784, -0.06577064)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2170348e-05, 0.00011878561, -0.00011599092)
+body_offset = Transform3D(0.9999953, -0.0031814054, -0.00043058395, 0.0031816438, 0.9999942, 0.0013512075, 0.00042647123, -0.0013526082, 0.9999989, 4.249811e-05, -0.000118494034, 0.00011616945)
+
+[node name="BicepR" parent="Player/anon_rig/Anon/Skeleton3D/RagdollBoneSimulator" parent_id_path=PackedInt32Array(390444334, 101815849) index="3" unique_id=1682950314]
+transform = Transform3D(0.8852218, 0.4161862, -0.20778032, 0.2953845, -0.84798604, -0.44007695, -0.35934854, 0.3281904, -0.8735902, 0.20491537, 1.420758, -0.06467494)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0018500237, -0.0018626038, -0.00036088726)
+body_offset = Transform3D(0.9999998, 0.00074598193, 0.0008150339, -0.0007465407, 0.9999992, 0.0012458563, -0.00081434846, -0.0012465417, 0.9999989, -0.00184834, 0.0018644333, 0.00036007166)
+
+[node name="ThighL" parent="Player/anon_rig/Anon/Skeleton3D/RagdollBoneSimulator" parent_id_path=PackedInt32Array(390444334, 101815849) index="4" unique_id=369345427]
+transform = Transform3D(-0.9761608, -0.121222906, 0.1800454, 0.06312944, -0.95221174, -0.29884353, 0.2076679, -0.28035298, 0.937164, -0.16155487, 0.8953648, -0.003999509)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.006659729, -0.0007459363, -0.00035874185)
+body_offset = Transform3D(0.99999696, 0.0012773834, 0.0023918003, -0.0012776405, 0.9999992, 0.00017091632, -0.002391845, -0.00017395616, 0.9999972, 0.0066615194, 0.00073748827, 0.000342682)
+
+[node name="ThighR" parent="Player/anon_rig/Anon/Skeleton3D/RagdollBoneSimulator" parent_id_path=PackedInt32Array(390444334, 101815849) index="5" unique_id=1913991093]
+transform = Transform3D(-0.95782703, 0.20288298, -0.20348762, -0.13987908, -0.9477957, -0.28656113, -0.2510029, -0.2460122, 0.93620276, 0.08486036, 0.8961588, -0.006824039)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0027546063, -0.0005887967, 0.0019878075)
+body_offset = Transform3D(0.99999785, -0.0011227019, -0.0020797998, 0.0011252277, 0.9999985, 0.0013298839, 0.0020785034, -0.0013323128, 0.99999714, -0.002751127, 0.00058305264, -0.0019943118)
+
+[node name="RigAfterimageVFX" parent="Player/anon_rig" parent_id_path=PackedInt32Array(390444334, 2048525431) index="3" unique_id=1454028287]
+ghost_material = SubResource("ShaderMaterial_yicr7")
+color_ramps = Array[GradientTexture1D]([SubResource("GradientTexture1D_dqxxx"), SubResource("GradientTexture1D_dvb16"), SubResource("GradientTexture1D_2t3p3")])
+
+[node name="HeadFollower" parent="Player" index="3" unique_id=1959222727]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.036665026, 1.7700295, -0.0020591281)
+
+[node name="TorsoFollower" parent="Player/HeadFollower/HeadFollowerNoRotation" parent_id_path=PackedInt32Array(390444334, 848843320) index="0" unique_id=766218119]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0004915297, -0.8753548, 0.11062967)
+
+[node name="Spike" parent="Player/HeadFollower/HeadFollowerNoRotation/TorsoFollower/JumpingDustVFX" parent_id_path=PackedInt32Array(390444334, 1649991041) index="0" unique_id=720739069]
+mesh = SubResource("CylinderMesh_m7s32")
+
+[node name="Shockwave" parent="Player/HeadFollower/HeadFollowerNoRotation/TorsoFollower/JumpingDustVFX" parent_id_path=PackedInt32Array(390444334, 1649991041) index="1" unique_id=1313325652]
+mesh = SubResource("CylinderMesh_axafa")
+
+[node name="Shockwave1" parent="Player/HeadFollower/HeadFollowerNoRotation/TorsoFollower/JumpingDustVFX" parent_id_path=PackedInt32Array(390444334, 1649991041) index="2" unique_id=458703644]
+mesh = SubResource("CylinderMesh_tpwom")
+
+[node name="Shockwave2" parent="Player/HeadFollower/HeadFollowerNoRotation/TorsoFollower/JumpingDustVFX" parent_id_path=PackedInt32Array(390444334, 1649991041) index="3" unique_id=357719751]
+mesh = SubResource("CylinderMesh_26caq")
+
+[node name="Shockwave3" parent="Player/HeadFollower/HeadFollowerNoRotation/TorsoFollower/JumpingDustVFX" parent_id_path=PackedInt32Array(390444334, 1649991041) index="4" unique_id=633609021]
+mesh = SubResource("CylinderMesh_6xt2w")
+
+[node name="Shockwave" parent="Player/HeadFollower/HeadFollowerNoRotation/TorsoFollower/FloorRayCast/FloorMarker/LandingDustVFX" parent_id_path=PackedInt32Array(390444334, 1081188074) index="0" unique_id=522852450]
+mesh = SubResource("CylinderMesh_qf3lb")
+
+[node name="MarbleShape" parent="Player/HurtboxArea3D" parent_id_path=PackedInt32Array(390444334, 329166252) index="1" unique_id=2015328092]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.036665026, 1.7700295, -0.0020591281)
+
+[node name="InstakillFLOOR" parent="." unique_id=272648811 instance=ExtResource("5_dqxxx")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 307.70013, -368.2635, -243.69508)
+
+[node name="WorldFloorBoundary" type="CollisionShape3D" parent="InstakillFLOOR" unique_id=1800597198]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -100, -1000)
+shape = SubResource("WorldBoundaryShape3D_0bejx")
+debug_color = Color(1, 0, 0, 0.41960785)
+
+[node name="WorldFloorBoundary2" type="CollisionShape3D" parent="InstakillFLOOR" unique_id=882358360]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1000, -100, 0)
+shape = SubResource("WorldBoundaryShape3D_0bejx")
+debug_color = Color(1, 0, 0, 0.41960785)
+
+[node name="WorldFloorBoundary3" type="CollisionShape3D" parent="InstakillFLOOR" unique_id=1589310316]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1000, -100, 0)
+shape = SubResource("WorldBoundaryShape3D_0bejx")
+debug_color = Color(1, 0, 0, 0.41960785)
+
+[node name="WorldFloorBoundary4" type="CollisionShape3D" parent="InstakillFLOOR" unique_id=1903508151]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -100, 1000)
+shape = SubResource("WorldBoundaryShape3D_0bejx")
+debug_color = Color(1, 0, 0, 0.41960785)
+
+[node name="AxisIndicator" parent="." unique_id=1575161220 instance=ExtResource("7_6ahyq")]
+visible = false
+base_size = 0.2
+
+[editable path="Player"]
+[editable path="Player/anon_rig"]
