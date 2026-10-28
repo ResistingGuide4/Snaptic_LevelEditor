@@ -11,5 +11,5 @@ dependencies = [
     "snapticbase@>=0.2.0"
 ]
 custom_levels = [
-    # ["BOBOMB_BATTLEFIELD", "res://gdpatch/mod/snaptic_smsixtyfour/bobomb_battlefield.tscn"],
+    ["LEVEL_EDITOR", "res://gdpatch/mod/snaptic_leveleditor/level_editor.tscn"],
 ]
